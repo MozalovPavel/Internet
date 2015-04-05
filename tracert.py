@@ -1,43 +1,41 @@
 import socket
-import os
 import subprocess
 import sys
-import cmd
 import re
-import select
 
 HOST = 'whois.ripe.net'
 PORT = 43
 
-def as_socket(s,ip_add):
+
+def as_socket(s, ip_add):
     temp_str = ('%s\r\n' % ip_add)
     b = bytearray(temp_str.encode("utf-8"))
     s.sendall(b)
+    buf = bytes()
     while True:
         buf = s.recv(1024).decode("utf-8")
-        if len(buf) == 0:
+        if len(buf):
             break
     return buf
+
 
 def main():
     srt = subprocess.check_output(['tracert', '194.226.235.185'], shell=True).decode(sys.getfilesystemencoding())
     answer = []
-    s = socket.create_connection((HOST,PORT))
+    sock = socket.create_connection((HOST, PORT))
     match = re.findall('\d+\.\d+\.\d+\.\d+', srt)
-    for v in match[1:]:
-        answer.append(v)
+    answer.extend(match[1:])
     res = []
-    for v in answer:
-        str = as_socket(s, v)
-        if (str is None) or (len(str) == 0):
+    for ip in answer:
+        received = as_socket(sock, ip)
+        if (received is None) or (len(received) == 0):
             res.append("нет As")
         else:
-            a_sys = re.findall(r'AS\d+', str)
-            for e in a_sys:
-                res.append(re.findall('\d+', e))
-
-    for e in range(0, len(res)):
-        print(answer[e], res[e])
+            auto_sys = re.findall(r'AS\d+', received)
+            for match in auto_sys:
+                res.append(re.findall('\d+', match))
+    for i in range(0, len(res)):
+        print(answer[i], res[i])
 
 
 if __name__ == "__main__":
